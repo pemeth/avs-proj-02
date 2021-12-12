@@ -28,6 +28,7 @@ unsigned LoopMeshBuilder::marchCubes(const ParametricScalarField &field)
     unsigned totalTriangles = 0;
 
     // 2. Loop over each coordinate in the 3D grid.
+    #pragma omp parallel for schedule(static) reduction(+:totalTriangles)
     for(size_t i = 0; i < totalCubesCount; ++i)
     {
         // 3. Compute 3D position in the grid.
@@ -72,5 +73,6 @@ float LoopMeshBuilder::evaluateFieldAt(const Vec3_t<float> &pos, const Parametri
 
 void LoopMeshBuilder::emitTriangle(const BaseMeshBuilder::Triangle_t &triangle)
 {
+    #pragma omp critical
     mTriangles.push_back(triangle);
 }
