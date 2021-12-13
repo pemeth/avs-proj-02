@@ -24,7 +24,7 @@ protected:
     unsigned marchCubes(const ParametricScalarField &field);
     float evaluateFieldAt(const Vec3_t<float> &pos, const ParametricScalarField &field);
     void emitTriangle(const Triangle_t &triangle);
-    unsigned buildOctree(const float edgeSize, const Vec3_t<float> &edgeStart, const ParametricScalarField &field);
+    unsigned buildOctree(const float edgeSize, const Vec3_t<float> &currentBlock, const ParametricScalarField &field);
 
     const Triangle_t *getTrianglesArray() const { return mTriangles.data(); }
 

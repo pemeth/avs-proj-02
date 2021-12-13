@@ -22,59 +22,64 @@ TreeMeshBuilder::TreeMeshBuilder(unsigned gridEdgeSize)
 
 unsigned TreeMeshBuilder::buildOctree(
     const float edgeSize,
-    const Vec3_t<float> &startBlock,
+    const Vec3_t<float> &currentBlock,
     const ParametricScalarField &field
 )
 {
-    float edgeHalf = edgeSize / 2.0f;
+    const float edgeHalf = edgeSize / 2.0f;
+
+    if (edgeHalf < 1) {
+        // If smaller than cutoff, we are done and can buildCubes()
+        return buildCube(currentBlock, field);
+    }
 
     // The middle of the current block transformed to be usable in evaluateFieldAt()
     Vec3_t<float> blockMiddle(
-        (startBlock.x + edgeHalf) * mGridResolution,
-        (startBlock.y + edgeHalf) * mGridResolution,
-        (startBlock.z + edgeHalf) * mGridResolution
+        (currentBlock.x + edgeHalf) * mGridResolution,
+        (currentBlock.y + edgeHalf) * mGridResolution,
+        (currentBlock.z + edgeHalf) * mGridResolution
     );
 
     float eval = evaluateFieldAt(blockMiddle, field);
 
     bool blockEmpty = eval > mIsoLevel + (emptinessInequalityConstant * (edgeSize * mGridResolution));
     if (blockEmpty) {
+        // If the current block does not generate a surface, return
         return 0;
     }
+    // Otherwise generate next 8 children
+    unsigned trianglesCount = 0;
 
-    // If smaller than cutoff, we are done and can buildCubes()
-    if (edgeHalf < 1) {
-        return buildCube(startBlock, field);
-    } else {
-        // The 8 children
-        unsigned trianglesCount = 0;
-        trianglesCount += buildOctree(edgeHalf, Vec3_t<float> (startBlock.x, startBlock.y, startBlock.z), field);
-        trianglesCount += buildOctree(edgeHalf, Vec3_t<float> (startBlock.x + edgeHalf, startBlock.y, startBlock.z), field);
-        trianglesCount += buildOctree(edgeHalf, Vec3_t<float> (startBlock.x, startBlock.y + edgeHalf, startBlock.z), field);
-        trianglesCount += buildOctree(edgeHalf, Vec3_t<float> (startBlock.x, startBlock.y, startBlock.z + edgeHalf), field);
-        trianglesCount += buildOctree(edgeHalf, Vec3_t<float> (startBlock.x + edgeHalf, startBlock.y + edgeHalf, startBlock.z), field);
-        trianglesCount += buildOctree(edgeHalf, Vec3_t<float> (startBlock.x + edgeHalf, startBlock.y, startBlock.z + edgeHalf), field);
-        trianglesCount += buildOctree(edgeHalf, Vec3_t<float> (startBlock.x, startBlock.y + edgeHalf, startBlock.z + edgeHalf), field);
-        trianglesCount += buildOctree(edgeHalf, Vec3_t<float> (startBlock.x + edgeHalf, startBlock.y + edgeHalf, startBlock.z + edgeHalf), field);
+    for (unsigned i = 0; i < 8; i++) {
+        #pragma omp task shared(trianglesCount)
+        {
+            unsigned tmp = buildOctree(
+                edgeHalf,
+                Vec3_t<float> (
+                    currentBlock.x + (edgeHalf * ((i & 0b001) > 0)),
+                    currentBlock.y + (edgeHalf * ((i & 0b010) > 0)),
+                    currentBlock.z + (edgeHalf * ((i & 0b100) > 0))
+                ),
+                field);
 
-        return trianglesCount;
+            #pragma omp critical
+            trianglesCount += tmp;
+        }
     }
 
-    // Shouldn't occur
-    return 0;
+    #pragma omp taskwait
+    return trianglesCount;
 }
 
 unsigned TreeMeshBuilder::marchCubes(const ParametricScalarField &field)
 {
-    // Suggested approach to tackle this problem is to add new method to
-    // this class. This method will call itself to process the children.
-    // It is also strongly suggested to first implement Octree as sequential
-    // code and only when that works add OpenMP tasks to achieve parallelism.
-
-    float edgeSize = field.getSize().x; // Is a cube - one edge is enough
     Vec3_t<float> startBlock(0); // The starting position of the initial undivided block
 
-    unsigned trianglesCount = buildOctree(mGridSize, startBlock, field);
+    unsigned trianglesCount;
+
+    #pragma omp parallel
+    #pragma omp single
+    trianglesCount = buildOctree(mGridSize, startBlock, field);
 
     return trianglesCount;
 }
@@ -107,5 +112,6 @@ float TreeMeshBuilder::evaluateFieldAt(const Vec3_t<float> &pos, const Parametri
 
 void TreeMeshBuilder::emitTriangle(const BaseMeshBuilder::Triangle_t &triangle)
 {
+    #pragma omp critical
     mTriangles.push_back(triangle);
 }
