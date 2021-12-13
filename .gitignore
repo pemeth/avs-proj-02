@@ -1,4 +1,6 @@
 .vscode/
 build/
+build_evaluate/
+build_vtune/
 
 avs-proj02.zip
