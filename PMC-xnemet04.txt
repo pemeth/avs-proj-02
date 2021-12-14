@@ -1,6 +1,6 @@
 Architektury Výpočetních Systémů (AVS 2021)
 Projekt č. 2 (PMC)
-Login: xlogin00
+Login: xnemet04
 
 Úloha 1: Paralelizace původního řešení
 ===============================================================================
@@ -8,28 +8,60 @@ Login: xlogin00
 1) Kterou ze smyček (viz zadání) je vhodnější paralelizovat a co způsobuje 
    neefektivitu paralelizaci té druhé?
 
+Je vhodnejšie paralelizovať marchCubes z dôvodu menšej réžie pre
+fork/join vlákien, kedže sa práca rozdeľuje v hlavnom riadiacom cykle,
+čím každé vlákno dostane väčší kus práce.
+
 2) Jaké plánování (rozdělení práce mezi vlákna) jste zvolili a proč? 
    Jaký vliv má velikost "chunk" při dynamickém plánování (8, 16, 32, 64)?
 
+Statické z dôvodu (efektívne) rovnakej práce v každej iterácii.
+Veľkosťou "chunk" sa nastavuje množstvo iterácii pridelených jednotlivým
+vláknam. Je vhodné použiť menší chunk size ak sa záťaž medzi iteráciami
+výrazne líši.
+
 3) Jakým způsobem zajišťujete ukládání trojúhelníků z několika vláken současně?
 
+Vlákna nikdy súčasne neukladajú trojuholníky, pretože kód pre ukladanie
+trojuholníkov je obalený do #pragma omp critical.
 
 Úloha 2: Paralelní průchod stromem
 ===============================================================================
 
 1) Stručně popište použití OpenMP tasků ve vašem řešení.
 
+Tasky sa využívajú pri zanorovaní do rekurzívneho volania metódy buildOctree(),
+teda pre každého potomka octree sa vytvorí nový task.
+
 2) Jakým způsobem jste realizovali sesbírání celkového počtu trojúhelníků?
+
+Každý task má v rámci jednotlivých úrovní rekurzie vyzdielanú premennú pre
+akumuláciu počtu trojuholníkov. Každý task však má mutexový prístup k danej
+premennej pomocou #pragmy critical. Keďže sa počet trojuholníkov akumuluje
+sčítaním, na poradí nezáleží a počet trojuholníkov sa vypočíta správne.
+Na konci každého zanorenia do stromu sa čaká na dokončenie taskov.
 
 3) Jaký vliv má na vaše řešení tzv. "cut-off"? Je vhodné vytvářet nový 
    task pro každou krychli na nejnižší úrovni?
 
+Cut-off depth pre ukončenie rekurzie nevyužívam.
+
+Nie je potrebné vytvoriť nový task, pretože samotné zanorenie,
+ktoré volá buildCube() je v rámci tasku.
+
 4) Jakým způsobem zajišťujete ukládání trojúhelníků z několika vláken současně?
+
+Vlákna nikdy súčasne neukladajú trojuholníky, pretože kód pre ukladanie
+trojuholníkov je obalený do #pragma omp critical.
 
 Úloha 3: Grafy škálování všech řešení
 ===============================================================================
 
 1) Stručně zhodnoťte efektivitu vytvořených řešení (na základě grafů škálování).
+
+Strong scaling verzie octree je výrazne viac závislý na veľkosti vstupu.
+Octree je efektívnejší pri menšom počte jadier, avšak po dosiahnutí ôsmich
+jadier začína byť efektívnejšia loop verzia.
 
 2) V jakém případě (v závislosti na počtu bodů ve vstupním souboru a velikosti 
    mřížky) bude vaše řešení 1. úlohy neefektivní? (pokud takový případ existuje)
@@ -37,22 +69,25 @@ Login: xlogin00
 3) Je (nebo není) stromový algoritmus efektivnější z pohledu slabého škálování 
    vzhledem ke vstupu?
 
+Nie je.
+
 Úloha 4: Analýza využití jader pomocí VTune
 ================================================================================
 
 1) Jaké bylo průměrné využití jader pro všechny tři implementace s omezením na 
    18 vláken? Na kolik procent byly využity?
    
-   ref:
-   loop:
-   tree:
+   ref: Effective CPU Utilization: 2.8% (0.996 out of 36 logical CPUs)
+   loop: Effective CPU Utilization: 47.6% (17.135 out of 36 logical CPUs)
+   tree: Effective CPU Utilization: 34.7% (12.491 out of 36 logical CPUs)
 
 2) Jaké bylo průměrné využití jader pro všechny tři implementace s využitím 
    všech jader? Na kolik procent se podařilo využít obě CPU?
    
-   ref:
-   loop:
-   tree:
+   ref: Effective CPU Utilization: 2.8% (0.997 out of 36 logical CPUs)
+   loop: Effective CPU Utilization: 83.5% (30.069 out of 36 logical CPUs)
+   tree: Effective CPU Utilization: 29.2% (10.526 out of 36 logical CPUs)
 
 3) Jaké jsou závěry z těchto měření?
 
+Implementácia "loop" má efektívnejšie využitie jadier.
