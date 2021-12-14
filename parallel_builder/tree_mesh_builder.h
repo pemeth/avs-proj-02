@@ -1,11 +1,11 @@
 /**
  * @file    tree_mesh_builder.h
  *
- * @author  FULL NAME <xlogin00@stud.fit.vutbr.cz>
+ * @author  Patrik Nemeth <xnemet04@stud.fit.vutbr.cz>
  *
  * @brief   Parallel Marching Cubes implementation using OpenMP tasks + octree early elimination
  *
- * @date    DATE
+ * @date    14.12.2021
  **/
 
 #ifndef TREE_MESH_BUILDER_H
