@@ -29,7 +29,7 @@ unsigned TreeMeshBuilder::buildOctree(
     const float edgeHalf = edgeSize / 2.0f;
 
     if (edgeHalf < 1) {
-        // If smaller than cutoff, we are done and can buildCubes()
+        // We are done and can buildCubes()
         return buildCube(currentBlock, field);
     }
 
